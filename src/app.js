@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { ApiResponse } from "./utils/ApiResponse.js";
 import dotenv from "dotenv";
 import session from "express-session";
+import MongoStore from "connect-mongodb-session"; // Add this import
 
 dotenv.config();
 
@@ -15,7 +16,14 @@ app.use(
     secret: process.env.REFRESH_TOKEN_SECRATE,
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false },
+    store: new MongoStore({
+      mongoUrl: process.env.MONGODB_URI,
+      collection: 'sessions' // Optional: explicitly name the collection
+    }),
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000
+    }
   })
 );
 
