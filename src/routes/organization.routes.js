@@ -1,7 +1,12 @@
 import { Router } from "express";
+import {
+    registerController,
+    joinOrganization,
+    inviteToOrganization,
+    verifyInvite
+} from "../controller/organization/index.js"; // Add .js extension and specify index.js
 
 const router = Router();
-import {registerController,joinOrganization,inviteToOrganization,verifyInvite} from "../controller/organization"
 
 router.post("/register", registerController);
 router.post("/join", joinOrganization);

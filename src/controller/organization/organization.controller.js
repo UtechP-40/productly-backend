@@ -1,7 +1,7 @@
-import { User } from "../models/User.js";
-import Organization from "../models/Organization.js";
-import { OrganizationUser } from "../models/OrganizationUser.js";
-import asyncHandler from "express-async-handler"; // for try/catch wrap
+import { User } from "../../models/user.model.js"
+import Organization from "../../models/organization.model.js";
+import { OrganizationUser } from "../../models/organizationUser.model.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";// for try/catch wrap
 import slugify from "slugify";
 
 // @route   POST /api/v1/auth/register

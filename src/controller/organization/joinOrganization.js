@@ -3,7 +3,7 @@ import { OrganizationUser } from "../../models/organizationUser.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
-import { sendEmail } from "../../utils/sendEmail.js";
+import  sendEmail  from "../../utils/sendEmail.js";
 import jwt from "jsonwebtoken";
 /**
  * Controller to handle user request to join an existing organization
