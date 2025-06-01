@@ -22,6 +22,12 @@ const organizationUserSchema = new mongoose.Schema(
             enum: ["OWNER", "ADMIN", "MEMBER"],
             default: "MEMBER"
         },
+        invitedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+          },
+          invitedAt: Date,
+          approvedAt: Date,
         status: {
             type: String,
             enum: ["ACTIVE", "INACTIVE", "PENDING"],
@@ -53,6 +59,18 @@ const organizationUserSchema = new mongoose.Schema(
         timestamps: true
     }
 );
+
+export const PERMISSIONS = {
+    ADMIN_PORTAL: [
+      "MANAGE_USERS", "MANAGE_BILLING", "MANAGE_ORGANIZATION",
+      "VIEW_ANALYTICS", "MANAGE_SETTINGS"
+    ],
+    MOBILE_APP: [
+      "READ", "WRITE", "DELETE", "UPLOAD_MEDIA", "ACCESS_FEATURES"
+    ]
+  };
+  
+  organizationUserSchema.index({ status: 1 });
 
 // Compound index to ensure a user can only have one role per organization
 organizationUserSchema.index({ userId: 1, organizationId: 1, userType: 1 }, { unique: true });

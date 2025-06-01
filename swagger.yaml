@@ -1,0 +1,205 @@
+openapi: 3.0.0
+info:
+  title: Productly API
+  version: 1.0.0
+  description: API documentation for Productly platform
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+
+paths:
+  /organizations/register:
+    post:
+      summary: Register new user and create organization
+      tags:
+        - Organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - firstName
+                - lastName
+                - email
+                - password
+                - organizationName
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                phoneNumber:
+                  type: string
+                organizationName:
+                  type: string
+      responses:
+        '201':
+          description: User and organization created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      fullName:
+                        type: string
+                      email:
+                        type: string
+                      avatar:
+                        type: string
+                      userType:
+                        type: string
+                  organization:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      name:
+                        type: string
+                      slug:
+                        type: string
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /organizations/join:
+    post:
+      summary: Join an existing organization
+      tags:
+        - Organization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orgSlug
+              properties:
+                orgSlug:
+                  type: string
+                inviteToken:
+                  type: string
+      responses:
+        '201':
+          description: Join request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                  data:
+                    type: object
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/schemas/Error'
+
+  /organizations/invite:
+    post:
+      summary: Invite user to organization
+      tags:
+        - Organization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - orgSlug
+              properties:
+                email:
+                  type: string
+                  format: email
+                orgSlug:
+                  type: string
+      responses:
+        '200':
+          description: Invitation sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                  data:
+                    type: object
+                    properties:
+                      email:
+                        type: string
+                  message:
+                    type: string
+        '403':
+          $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/schemas/Error'
+
+  /organizations/verify-invite:
+    post:
+      summary: Verify organization invitation
+      tags:
+        - Organization
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to frontend join page
+        '400':
+          $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/schemas/Error'

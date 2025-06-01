@@ -50,9 +50,13 @@ const userSchema = new mongoose.Schema(
             type: String,
             select: false
         },
-        lastLogin: {
-            type: Date
-        }
+        loginLogs: [{
+            device: String,
+            ip: String,
+            location: String,
+            time: { type: Date, default: Date.now }
+          }]
+          
     },
     {
         timestamps: true
