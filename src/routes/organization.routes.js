@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-    registerController,
+    registerOrganization,
     joinOrganization,
     inviteToOrganization,
     verifyInvite
@@ -8,7 +8,7 @@ import {
 
 const router = Router();
 
-router.post("/register", registerController);
+router.post("/register", registerOrganization);
 router.post("/join", joinOrganization);
 router.post("/invite", inviteToOrganization);
 router.post("/verify-invite", verifyInvite);

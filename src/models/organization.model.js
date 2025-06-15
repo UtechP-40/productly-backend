@@ -11,11 +11,11 @@ const organizationSchema = new mongoose.Schema({
     required: true,
     trim: true,
     lowercase: true,
-    unique: true  // Matches existing index
+    unique: true  
   },
   admin: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // ✅ Corrected
+    ref: 'User', 
     required: true
   },
   email: {
@@ -23,7 +23,7 @@ const organizationSchema = new mongoose.Schema({
     required: true,
     trim: true,
     lowercase: true,
-    unique: true  // Matches existing index
+    unique: true  
   },
   logo: {
     type: String,

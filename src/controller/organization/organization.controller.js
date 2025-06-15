@@ -1,87 +1,64 @@
-import { User } from "../../models/user.model.js"
+import { User } from "../../models/user.model.js";
 import Organization from "../../models/organization.model.js";
 import { OrganizationUser } from "../../models/organizationUser.model.js";
-import { asyncHandler } from "../../utils/asyncHandler.js";// for try/catch wrap
+import { asyncHandler } from "../../utils/asyncHandler.js";
 import slugify from "slugify";
+import { ApiError } from "../../utils/ApiError.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
-// @route   POST /api/v1/auth/register
-// @desc    Register user + create organization + assign admin
-export const registerController = asyncHandler(async (req, res) => {
-  const {
-    firstName,
-    lastName,
-    email,
-    password,
-    phoneNumber,
-    organizationName,
-  } = req.body;
+async function registerUser(userData, organizationData) {
+  const { firstName, lastName, email, password, userType } = userData;
+  const { name: orgName, slug } = organizationData;
 
-  if (!firstName || !lastName || !email || !password || !organizationName) {
-    return res.status(400).json({ message: "All required fields must be filled" });
+  if (!firstName || !lastName || !email || !password || !userType) {
+    throw new ApiError(400, "All user fields (first name, last name, email, password, user type) are required");
   }
 
-  // 1. Check if user already exists
+  if (!orgName) {
+    throw new ApiError(400, "Organization name is required");
+  }
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    return res.status(400).json({ message: "User already exists with this email" });
+    throw new ApiError(409, "User already exists with this email");
   }
 
-  // 2. Create User
-  const user = await User.create({
-    firstName,
-    lastName,
-    email,
-    password,
-    phoneNumber,
-    userType: "ADMIN_PORTAL"
-  });
+  const user = await User.create(userData);
 
-  // 3. Create Organization
-  const slug = slugify(organizationName, { lower: true, strict: true });
-  const existingOrg = await Organization.findOne({ slug });
+  const generatedSlug = slug || slugify(orgName, { lower: true });
+
+  const existingOrg = await Organization.findOne({ slug: generatedSlug });
   if (existingOrg) {
-    return res.status(400).json({ message: "Organization name already taken" });
+    throw new ApiError(409, "Organization with this slug already exists");
   }
 
   const organization = await Organization.create({
-    name: organizationName,
-    slug,
-    email: email,
-    admin: user._id
+    name: orgName,
+    slug: generatedSlug,
+    admin: user._id,
+    email
   });
 
-  // 4. Create OrganizationUser entry (as OWNER)
+  const permissions =
+    userType === "ADMIN_PORTAL"
+      ? ["MANAGE_USERS", "MANAGE_BILLING", "MANAGE_ORGANIZATION", "VIEW_ANALYTICS", "MANAGE_SETTINGS"]
+      : ["READ", "WRITE", "DELETE", "UPLOAD_MEDIA", "ACCESS_FEATURES"];
+
   const organizationUser = await OrganizationUser.create({
     userId: user._id,
     organizationId: organization._id,
-    userType: "ADMIN_PORTAL",
+    userType,
     role: "OWNER",
     status: "ACTIVE",
-    permissions: [
-      "MANAGE_USERS",
-      "MANAGE_BILLING",
-      "MANAGE_ORGANIZATION",
-      "VIEW_ANALYTICS",
-      "MANAGE_SETTINGS"
-    ],
-    joinedAt: new Date()
+    permissions
   });
 
-  // 5. Generate tokens
-  const accessToken = user.generateAccessToken();
-  const refreshToken = user.generateRefreshToken();
-
-  user.refreshTokens = [refreshToken];
-  await user.save();
-
-  // 6. Send Response 
-  return res.status(201).json({
-    message: "User registered successfully",
+  return new ApiResponse(201, {
     user: {
       _id: user._id,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
-      avatar: user.avatar,
       userType: user.userType
     },
     organization: {
@@ -89,7 +66,33 @@ export const registerController = asyncHandler(async (req, res) => {
       name: organization.name,
       slug: organization.slug
     },
-    accessToken,
-    refreshToken
-  });
+    organizationUser: {
+      _id: organizationUser._id,
+      role: organizationUser.role,
+      permissions: organizationUser.permissions
+    }
+  }, "User registered successfully");
+}
+// main controller finalized for organization regestration
+export const registerOrganization = asyncHandler(async (req, res, next) => {
+  const { userData, organizationData } = req.body;
+
+  if (!userData || !organizationData) {
+    throw new ApiError(400, "User and organization data are required");
+  }
+
+  try {
+    const response = await registerUser(userData, organizationData);
+    res.status(response.statusCode).json(response);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+        errors: error.errors || null
+      });
+    } else {
+      next(error);
+    }
+  }
 });
