@@ -1,7 +1,7 @@
 // FILEPATH: /mnt/data/kick_start/productly/backend/src/controller/user/user.controller.js
 
 import { User } from "../../models/user.model.js";
-import { Organization } from "../../models/organization.model.js";
+// import { Organization } from "../../models/organization.model.js";
 import { OrganizationUser } from "../../models/organizationUser.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
@@ -19,8 +19,10 @@ const generateAccessAndRefreshTokens = async (userId) => {
     return { accessToken, refreshToken };
 };
 
-export const loginUser = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+export const loginUser = asyncHandler(async (req, res,next) => {
+    console.log('reached here')
+    try {
+        const { email, password } = req.body;
 
     if (!email || !password) {
         throw new ApiError(400, "Email and password are required");
@@ -67,6 +69,10 @@ export const loginUser = asyncHandler(async (req, res) => {
                 "User logged in successfully"
             )
         );
+    } catch (error) {
+        console.log(error)
+        next(error)
+    }
 });
 
 export const getUserProfile = asyncHandler(async (req, res) => {

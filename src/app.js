@@ -56,9 +56,9 @@ app.use(cookieParser());
 
 //routes imports
 import organizationRouter from "./routes/organization.routes.js";
-
+import userRouter from "./routes/user.routes.js"
 app.use('/api/v1/organizations', organizationRouter)
-
+app.use('/api/v1/users',userRouter)
 
 // Error handling middleware
 
