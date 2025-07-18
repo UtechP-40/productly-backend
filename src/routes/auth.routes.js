@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { authRateLimit } from "../middleware/rateLimit.middleware.js";
-import authController from "../controller/auth.controller.js";
+import authController from "../controllers/auth.controller.js";
 
 const router = Router();
 
