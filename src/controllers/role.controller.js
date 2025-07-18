@@ -1,10 +1,14 @@
 import roleService from "../services/role.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { User } from "../models/user.model.js";
+import mongoose from "mongoose";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 /**
  * Role Controller
- * Handles HTTP requests for role management
+ * Handles HTTP requests for role management and role-based access control
+ * Implements CRUD operations for roles, role assignment to users, and permission management
  */
 class RoleController {
   /**
@@ -342,6 +346,324 @@ class RoleController {
           error.statusCode || 500,
           null,
           error.message || "Failed to implement role hierarchy"
+        )
+      );
+    }
+  }
+  
+  /**
+   * Assign role to a user
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async assignRoleToUser(req, res) {
+    try {
+      const { userId, roleId } = req.body;
+      const organizationId = req.user.organization;
+      
+      if (!userId || !roleId) {
+        throw new ApiError(400, "User ID and Role ID are required");
+      }
+      
+      // Validate user exists and belongs to the organization
+      const user = await User.findOne({ 
+        _id: userId,
+        isActive: true
+      });
+      
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+      
+      // Validate role exists and belongs to the organization
+      const role = await roleService.getRoleById(roleId, organizationId);
+      
+      if (!role) {
+        throw new ApiError(404, "Role not found");
+      }
+      
+      // Assign role to user
+      user.organizationRole = roleId;
+      await user.save();
+      
+      return res.status(200).json(
+        new ApiResponse(200, {
+          userId: user._id,
+          roleId: role._id,
+          roleName: role.name
+        }, "Role assigned to user successfully")
+      );
+    } catch (error) {
+      return res.status(error.statusCode || 500).json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Failed to assign role to user"
+        )
+      );
+    }
+  }
+  
+  /**
+   * Remove role from a user
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async removeRoleFromUser(req, res) {
+    try {
+      const { userId } = req.params;
+      const organizationId = req.user.organization;
+      
+      if (!userId) {
+        throw new ApiError(400, "User ID is required");
+      }
+      
+      // Validate user exists and belongs to the organization
+      const user = await User.findOne({ 
+        _id: userId,
+        isActive: true
+      });
+      
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+      
+      // Check if user has a role assigned
+      if (!user.organizationRole) {
+        throw new ApiError(400, "User does not have a role assigned");
+      }
+      
+      // Store the role ID for response
+      const previousRoleId = user.organizationRole;
+      
+      // Remove role from user
+      user.organizationRole = null;
+      await user.save();
+      
+      return res.status(200).json(
+        new ApiResponse(200, {
+          userId: user._id,
+          previousRoleId
+        }, "Role removed from user successfully")
+      );
+    } catch (error) {
+      return res.status(error.statusCode || 500).json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Failed to remove role from user"
+        )
+      );
+    }
+  }
+  
+  /**
+   * Get users by role
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async getUsersByRole(req, res) {
+    try {
+      const { roleId } = req.params;
+      const organizationId = req.user.organization;
+      const { page = 1, limit = 20 } = req.query;
+      
+      if (!roleId) {
+        throw new ApiError(400, "Role ID is required");
+      }
+      
+      // Validate role exists and belongs to the organization
+      const role = await roleService.getRoleById(roleId, organizationId);
+      
+      if (!role) {
+        throw new ApiError(404, "Role not found");
+      }
+      
+      // Find users with this role
+      const users = await User.find({
+        organizationRole: roleId,
+        isActive: true
+      })
+      .select("_id firstName lastName email avatar lastLoginAt")
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+      
+      // Count total users with this role
+      const total = await User.countDocuments({
+        organizationRole: roleId,
+        isActive: true
+      });
+      
+      return res.status(200).json(
+        new ApiResponse(200, {
+          users,
+          pagination: {
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            pages: Math.ceil(total / limit)
+          },
+          role: {
+            _id: role._id,
+            name: role.name
+          }
+        }, "Users retrieved successfully")
+      );
+    } catch (error) {
+      return res.status(error.statusCode || 500).json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Failed to get users by role"
+        )
+      );
+    }
+  }
+  
+  /**
+   * Validate role assignment
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async validateRoleAssignment(req, res) {
+    try {
+      const { userId, roleId } = req.body;
+      const organizationId = req.user.organization;
+      
+      if (!userId || !roleId) {
+        throw new ApiError(400, "User ID and Role ID are required");
+      }
+      
+      // Validate user exists
+      const user = await User.findOne({ 
+        _id: userId,
+        isActive: true
+      });
+      
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+      
+      // Validate role exists
+      const role = await roleService.getRoleById(roleId, organizationId);
+      
+      if (!role) {
+        throw new ApiError(404, "Role not found");
+      }
+      
+      // Check if user already has this role
+      const hasRole = user.organizationRole && 
+                      user.organizationRole.toString() === roleId.toString();
+      
+      // Check if user has any existing role
+      const currentRole = user.organizationRole ? 
+        await roleService.getRoleById(user.organizationRole, organizationId) : null;
+      
+      return res.status(200).json(
+        new ApiResponse(200, {
+          valid: true,
+          hasRole,
+          currentRole: currentRole ? {
+            _id: currentRole._id,
+            name: currentRole.name
+          } : null,
+          targetRole: {
+            _id: role._id,
+            name: role.name
+          }
+        }, "Role assignment validation successful")
+      );
+    } catch (error) {
+      return res.status(error.statusCode || 500).json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Failed to validate role assignment"
+        )
+      );
+    }
+  }
+  
+  /**
+   * Bulk assign roles to users
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async bulkAssignRoles(req, res) {
+    try {
+      const { assignments } = req.body;
+      const organizationId = req.user.organization;
+      
+      if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
+        throw new ApiError(400, "Valid assignments array is required");
+      }
+      
+      // Validate all role IDs exist and belong to the organization
+      const roleIds = [...new Set(assignments.map(a => a.roleId))];
+      const roles = await Promise.all(
+        roleIds.map(id => roleService.getRoleById(id, organizationId))
+      );
+      
+      // Check if any roles were not found
+      const validRoleIds = roles.filter(Boolean).map(r => r._id.toString());
+      const invalidRoleIds = roleIds.filter(id => !validRoleIds.includes(id.toString()));
+      
+      if (invalidRoleIds.length > 0) {
+        throw new ApiError(400, `Invalid role IDs: ${invalidRoleIds.join(', ')}`);
+      }
+      
+      // Process assignments
+      const results = {
+        successful: [],
+        failed: []
+      };
+      
+      for (const assignment of assignments) {
+        try {
+          const { userId, roleId } = assignment;
+          
+          // Find user
+          const user = await User.findOne({ 
+            _id: userId,
+            isActive: true
+          });
+          
+          if (!user) {
+            results.failed.push({
+              userId,
+              roleId,
+              reason: "User not found"
+            });
+            continue;
+          }
+          
+          // Assign role
+          user.organizationRole = roleId;
+          await user.save();
+          
+          results.successful.push({
+            userId: user._id,
+            roleId,
+            userName: `${user.firstName} ${user.lastName}`
+          });
+        } catch (error) {
+          results.failed.push({
+            userId: assignment.userId,
+            roleId: assignment.roleId,
+            reason: error.message || "Unknown error"
+          });
+        }
+      }
+      
+      return res.status(200).json(
+        new ApiResponse(200, results, "Bulk role assignment completed")
+      );
+    } catch (error) {
+      return res.status(error.statusCode || 500).json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Failed to perform bulk role assignment"
         )
       );
     }

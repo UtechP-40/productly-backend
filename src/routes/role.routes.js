@@ -80,4 +80,35 @@ router.post(
   roleController.implementRoleHierarchy
 );
 
+// User role assignment
+router.post(
+  "/assign",
+  hasPermission("MANAGE_ROLES"),
+  roleController.assignRoleToUser
+);
+
+router.delete(
+  "/users/:userId/role",
+  hasPermission("MANAGE_ROLES"),
+  roleController.removeRoleFromUser
+);
+
+router.get(
+  "/:roleId/users",
+  hasPermission(["VIEW_ROLES", "MANAGE_ROLES"]),
+  roleController.getUsersByRole
+);
+
+router.post(
+  "/validate-assignment",
+  hasPermission(["VIEW_ROLES", "MANAGE_ROLES"]),
+  roleController.validateRoleAssignment
+);
+
+router.post(
+  "/bulk-assign",
+  hasPermission("MANAGE_ROLES"),
+  roleController.bulkAssignRoles
+);
+
 export default router;
