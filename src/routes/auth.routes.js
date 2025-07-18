@@ -8,12 +8,13 @@ const router = Router();
 // Apply rate limiting to all auth routes
 router.use(authRateLimit());
 
-// Authentication routes
+// Public authentication routes
 router.post("/login", authController.login);
 router.post("/register", authController.register);
 router.post("/logout", authController.logout);
 router.post("/refresh-token", authController.refreshToken);
 router.get("/verify-session", authController.verifySession);
+router.post("/validate-password", authController.validatePassword);
 
 // Protected routes (require authentication)
 router.use(verifyJWT);
