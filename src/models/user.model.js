@@ -50,6 +50,30 @@ const userSchema = new mongoose.Schema(
             type: String,
             select: false
         },
+        // Enhanced fields for RBAC system
+        organizationRole: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Role',
+            sparse: true
+        },
+        invitationToken: {
+            type: String,
+            sparse: true,
+            select: false
+        },
+        invitedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            sparse: true
+        },
+        lastLoginAt: {
+            type: Date
+        },
+        isActive: {
+            type: Boolean,
+            default: true,
+            index: true
+        },
         loginLogs: [{
             device: String,
             ip: String,

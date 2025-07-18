@@ -9,6 +9,10 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { ipRateLimit, authRateLimit } from "./middleware/rateLimit.middleware.js";
+import { extractDeviceInfo } from "./middleware/auth.middleware.js";
+import scheduleSessionCleanup from "./utils/sessionCleanup.js";
+import scheduleInvitationCleanup from "./utils/invitationCleanup.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -54,11 +58,36 @@ app.use(express.static("public"));
 // Parse cookies
 app.use(cookieParser());
 
+// Extract device information for all requests
+app.use(extractDeviceInfo);
+
+// Apply general rate limiting to all routes
+app.use(ipRateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 100 // 100 requests per 15 minutes
+}));
+
+// Apply stricter rate limiting to authentication routes
+app.use('/api/v1/auth', authRateLimit());
+
+// Initialize session cleanup (run every 30 minutes)
+scheduleSessionCleanup(30);
+
+// Initialize invitation cleanup (run every 60 minutes)
+scheduleInvitationCleanup(60);
+
 //routes imports
 import organizationRouter from "./routes/organization.routes.js";
-import userRouter from "./routes/user.routes.js"
-app.use('/api/v1/organizations', organizationRouter)
-app.use('/api/v1/users',userRouter)
+import userRouter from "./routes/user.routes.js";
+import authRouter from "./routes/auth.routes.js";
+import roleRouter from "./routes/role.routes.js";
+import invitationRouter from "./routes/invitation.routes.js";
+
+app.use('/api/v1/organizations', organizationRouter);
+app.use('/api/v1/users', userRouter);
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/roles', roleRouter);
+app.use('/api/v1/invitations', invitationRouter);
 
 // Error handling middleware
 
