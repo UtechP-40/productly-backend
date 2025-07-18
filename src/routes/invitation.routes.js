@@ -10,19 +10,17 @@ router.get("/verify/:token", invitationController.verifyInvitation);
 // All other routes require authentication
 router.use(verifyJWT);
 
-// Create a new invitation
+// Create invitations
 router.post("/", invitationController.createInvitation);
+router.post("/bulk", invitationController.bulkCreateInvitations);
 
-// Get all invitations for an organization
+// Get invitations
 router.get("/organization/:organizationId", invitationController.getOrganizationInvitations);
-
-// Get invitation by ID
+router.get("/status/:email", invitationController.checkInvitationStatus);
 router.get("/:id", invitationController.getInvitationById);
 
-// Resend invitation
+// Manage invitations
 router.post("/:id/resend", invitationController.resendInvitation);
-
-// Revoke invitation
 router.post("/:id/revoke", invitationController.revokeInvitation);
 
 export default router;

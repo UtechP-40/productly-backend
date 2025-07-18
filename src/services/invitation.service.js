@@ -307,6 +307,30 @@ class InvitationService {
       throw error.statusCode ? error : new ApiError(500, "Failed to retrieve invitation", error);
     }
   }
+  
+  /**
+   * Find pending invitation by email and organization
+   * @param {string} email - Email address
+   * @param {string} organizationId - Organization ID
+   * @returns {Object|null} Invitation document or null if not found
+   */
+  async findPendingInvitation(email, organizationId) {
+    try {
+      if (!email || !organizationId) {
+        throw new ApiError(400, "Email and organization ID are required");
+      }
+      
+      const invitation = await Invitation.findOne({
+        email: email.toLowerCase(),
+        organization: organizationId,
+        status: "PENDING"
+      }).populate("organization role invitedBy");
+      
+      return invitation; // Will be null if not found
+    } catch (error) {
+      throw error.statusCode ? error : new ApiError(500, "Failed to check invitation status", error);
+    }
+  }
 }
 
 export default new InvitationService();
